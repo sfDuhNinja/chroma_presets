@@ -4,6 +4,9 @@ import logging
 import os
 
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+
+from .bulb_profiles import get_bulb_profile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,6 +62,23 @@ def _brightness_for_color(color, base_l, target_brightness):
     return int(max(30, min(255, round(value))))
 
 
+def _has_color(hass, entity_id):
+    """Whether this entity's device is known to accept rgb_color.
+
+    Some lights (white-spectrum-only bulbs, dimmer-as-light plugs) don't
+    support rgb_color at all; sending it anyway can make light.turn_on
+    reject the whole call, which would otherwise silently break every
+    other target in the same apply_preset batch.
+    """
+    entry = er.async_get(hass).async_get(entity_id)
+    if entry is None or entry.device_id is None:
+        return True
+    device = dr.async_get(hass).async_get(entry.device_id)
+    if device is None:
+        return True
+    return get_bulb_profile(device.manufacturer, device.model)["has_color"]
+
+
 async def apply_preset(hass, preset_id, entity_ids, brightness_override, transition):
     preset = _get_preset(preset_id)
     if preset is None:
@@ -78,18 +98,13 @@ async def apply_preset(hass, preset_id, entity_ids, brightness_override, transit
     tasks = []
     for entity_id, idx in zip(entity_ids, indices):
         color = colors[idx]
-        tasks.append(
-            hass.services.async_call(
-                "light",
-                "turn_on",
-                {
-                    "entity_id": entity_id,
-                    "rgb_color": color["rgb"],
-                    "brightness": _brightness_for_color(color, base_l, target_brightness),
-                    "transition": transition,
-                },
-                blocking=False,
-            )
-        )
+        data = {
+            "entity_id": entity_id,
+            "brightness": _brightness_for_color(color, base_l, target_brightness),
+            "transition": transition,
+        }
+        if _has_color(hass, entity_id):
+            data["rgb_color"] = color["rgb"]
+        tasks.append(hass.services.async_call("light", "turn_on", data, blocking=False))
 
     await asyncio.gather(*tasks)
