@@ -18,7 +18,7 @@ from colors import (  # noqa: E402
 def test_tone_steps_stay_pairwise_separated():
     steps = sorted(TONE_L_STEPS)
     gaps = [b - a for a, b in zip(steps, steps[1:])]
-    assert all(g >= 0.08 for g in gaps), steps
+    assert all(g >= 0.06 for g in gaps), steps
 
 
 def test_palettes_are_25_unique_colors():

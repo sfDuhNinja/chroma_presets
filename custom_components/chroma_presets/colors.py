@@ -239,10 +239,13 @@ ANCHOR_SCHEMES = {
 # longer part of a tone step's delta - it's re-derived at each step's L from
 # that hue's gamut ceiling (see chroma_from_fraction), so a "shade" never
 # silently clips on a low-ceiling hue while barely nudging a high-ceiling
-# one. Steps are kept well-separated (>= 0.08 apart pairwise) so consecutive
-# tones stay distinguishable under simultaneous contrast instead of reading
-# as near-duplicates.
-TONE_L_STEPS = [0.00, -0.10, 0.10, -0.20, 0.20]
+# one. Steps are kept separated (>= 0.06 apart pairwise) so consecutive tones
+# stay distinguishable under simultaneous contrast instead of reading as
+# near-duplicates - but not so wide that the extreme tint/shade looks like
+# it belongs to a different palette next to its siblings (+-0.20 did; a
+# tint near L=0.82 goes pale enough to read as a mismatched pastel outlier
+# in a room with mid-tone neighbors).
+TONE_L_STEPS = [0.00, -0.06, 0.06, -0.12, 0.12]
 
 # Candidate chroma fractions tried for non-primary anchors; the one scoring
 # highest under ou_luo_ch against the primary anchor's base colour is used
@@ -253,6 +256,21 @@ TONE_L_STEPS = [0.00, -0.10, 0.10, -0.20, 0.20]
 # gray/white rather than "muted", which is what happened with 0.28-0.4 in
 # practice on real bulbs.
 _SECONDARY_FRACTION_CANDIDATES = [0.85, 0.7, 0.6, 0.55]
+
+
+def _tone_l(base_l: float, index: int) -> float:
+    """Lightness for the `index`-th tone step, cycling through TONE_L_STEPS.
+
+    A monochromatic (or any single-hue-family) palette only has as many
+    distinct (hue, chroma) combinations as there are tone steps - repeats
+    beyond that would be exact duplicates before any dedup nudge even runs.
+    Each full cycle through the steps gets a small deterministic offset so
+    repeats start out distinct instead of leaning on _dedupe_to_srgb's
+    reactive, bounded-attempt nudge to invent 20 colors out of 5.
+    """
+    cycle = index // len(TONE_L_STEPS)
+    tone_l = TONE_L_STEPS[index % len(TONE_L_STEPS)] + 0.015 * cycle
+    return min(0.95, max(0.25, base_l + tone_l))
 
 
 def _pick_role_fraction(primary_hue, primary_l, primary_fraction, anchor_hue, base_l):
@@ -302,11 +320,15 @@ def _dedupe_to_srgb(hue_l_frac_triples):
         C = chroma_from_fraction(L, H, fraction)
         rgb = oklch_to_srgb255(L, C, H)
 
+        base_l_for_nudge = L
         attempt = 0
-        while rgb in used and attempt < 12:
+        while rgb in used and attempt < 20:
+            # Widen from the ORIGINAL target each attempt (not the
+            # already-nudged L) - a cumulative walk can double back onto an
+            # L it already tried, or onto whatever another entry landed on.
             attempt += 1
             sign = 1 if attempt % 2 else -1
-            L = min(0.95, max(0.2, L + sign * 0.015 * attempt))
+            L = min(0.95, max(0.2, base_l_for_nudge + sign * 0.02 * attempt))
             C = chroma_from_fraction(L, H, fraction)
             rgb = oklch_to_srgb255(L, C, H)
 
@@ -334,8 +356,7 @@ def generate_harmony_palette(scheme: str, base_hue: float, base_l: float, chroma
         for i in range(count):
             t = van_der_corput(i) if span else 0.5
             hue_offset = (t - 0.5) * span
-            tone_l = TONE_L_STEPS[i % len(TONE_L_STEPS)]
-            L = min(0.95, max(0.25, base_l + tone_l))
+            L = _tone_l(base_l, i)
             triples.append((base_hue + hue_offset, L, chroma_fraction))
         return _dedupe_to_srgb(triples)
 
@@ -352,8 +373,7 @@ def generate_harmony_palette(scheme: str, base_hue: float, base_l: float, chroma
     for anchor_offset, n, fraction in zip(anchors, per_anchor, role_fractions):
         plan = []
         for step in range(n):
-            tone_l = TONE_L_STEPS[step % len(TONE_L_STEPS)]
-            L = min(0.95, max(0.25, base_l + tone_l))
+            L = _tone_l(base_l, step)
             plan.append((base_hue + anchor_offset, L, fraction))
         anchor_plans.append(plan)
 
