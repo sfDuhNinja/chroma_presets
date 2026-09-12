@@ -247,8 +247,12 @@ TONE_L_STEPS = [0.00, -0.10, 0.10, -0.20, 0.20]
 # Candidate chroma fractions tried for non-primary anchors; the one scoring
 # highest under ou_luo_ch against the primary anchor's base colour is used
 # for every tone step of that anchor. Encodes the Ou-Luo finding that a
-# muted secondary reads as more harmonious than a second fully-saturated hue.
-_SECONDARY_FRACTION_CANDIDATES = [0.85, 0.7, 0.55, 0.4, 0.28]
+# muted secondary reads as more harmonious than a second fully-saturated hue -
+# but floored at 0.55, not down to near-zero: low-gamut-ceiling hues (green,
+# cyan) at a small fraction of an already-small ceiling read as visually
+# gray/white rather than "muted", which is what happened with 0.28-0.4 in
+# practice on real bulbs.
+_SECONDARY_FRACTION_CANDIDATES = [0.85, 0.7, 0.6, 0.55]
 
 
 def _pick_role_fraction(primary_hue, primary_l, primary_fraction, anchor_hue, base_l):

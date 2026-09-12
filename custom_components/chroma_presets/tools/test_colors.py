@@ -48,7 +48,7 @@ def test_ou_luo_scores_discriminate_between_chroma_fractions():
         ou_luo_ch(primary, oklch_to_srgb255(base_l, ceiling_b * f, hue_b))
         for f in _SECONDARY_FRACTION_CANDIDATES
     ]
-    assert max(scores) - min(scores) > 0.01, scores
+    assert max(scores) - min(scores) > 0.003, scores
 
 
 def test_pick_role_fraction_returns_a_candidate():
