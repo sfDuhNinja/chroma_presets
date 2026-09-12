@@ -1,0 +1,45 @@
+apply_preset:
+  name: Apply preset
+  description: >-
+    Apply a static, color-theory-based preset across the given targets.
+    Each light gets its own harmonized color from the preset's 25-color
+    palette instead of a single color repeated everywhere.
+  fields:
+    preset_id:
+      name: Preset
+      description: Which preset palette to apply.
+      required: true
+      selector:
+        select:
+          options:
+            - value: "amber_dusk"
+              label: "Amber Dusk — cozy amber & orange"
+            - value: "deep_lagoon"
+              label: "Deep Lagoon — cool teal & coral accent"
+            - value: "prism_pulse"
+              label: "Prism Pulse — vivid four-hue spread"
+    targets:
+      name: Targets
+      description: Lights and/or areas to apply the preset to.
+      required: true
+      selector:
+        target:
+          entity:
+            domain: light
+    brightness:
+      name: Brightness override
+      description: Optional overall brightness (1-255). Defaults to the preset's own brightness.
+      selector:
+        number:
+          min: 1
+          max: 255
+          mode: slider
+    transition:
+      name: Transition
+      description: Transition time in seconds.
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: seconds

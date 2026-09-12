@@ -1,0 +1,9 @@
+{
+    "domain": "chroma_presets",
+    "name": "Chroma Presets",
+    "config_flow": true,
+    "integration_type": "service",
+    "iot_class": "calculated",
+    "requirements": [],
+    "version": "0.1.0"
+}
