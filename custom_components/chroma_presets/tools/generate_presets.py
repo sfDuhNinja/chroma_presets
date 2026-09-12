@@ -30,7 +30,7 @@ PRESET_SPECS = [
         "scheme": "analogous",
         "base_hue": 55,
         "base_l": 0.62,
-        "base_c": 0.12,
+        "chroma_fraction": 0.75,
         "brightness": 160,
     },
     {
@@ -40,7 +40,7 @@ PRESET_SPECS = [
         "scheme": "split_complementary",
         "base_hue": 215,
         "base_l": 0.58,
-        "base_c": 0.13,
+        "chroma_fraction": 0.7,
         "brightness": 180,
     },
     {
@@ -50,7 +50,7 @@ PRESET_SPECS = [
         "scheme": "tetradic",
         "base_hue": 25,
         "base_l": 0.65,
-        "base_c": 0.16,
+        "chroma_fraction": 0.8,
         "brightness": 200,
     },
 ]
@@ -63,7 +63,7 @@ def main():
             scheme=spec["scheme"],
             base_hue=spec["base_hue"],
             base_l=spec["base_l"],
-            base_c=spec["base_c"],
+            chroma_fraction=spec["chroma_fraction"],
             count=25,
         )
         unique = {tuple(c["rgb"]) for c in colors}
