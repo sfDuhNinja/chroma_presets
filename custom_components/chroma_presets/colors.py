@@ -82,17 +82,16 @@ def _in_gamut(rgb_lin, eps=1e-4) -> bool:
     return all(-eps <= c <= 1 + eps for c in rgb_lin)
 
 
-def _max_in_gamut_chroma(L: float, H_deg: float, hi: float = 0.4) -> float:
+def max_chroma_at(L: float, H_deg: float, hi: float = 0.4) -> float:
     """Binary-search the largest OKLCH chroma reproducible in sRGB at L/H.
 
     This is the per-hue gamut ceiling: the reference point every chroma
     target in this module is expressed as a fraction of, instead of an
     absolute constant that happens to fit some hues and clip others.
+    `hi` is a hard ceiling no OKLCH chroma in this module ever needs to
+    exceed; callers who already know a smaller upper bound (a rejected
+    candidate chroma) can pass it to narrow the search.
     """
-    _, a, b = oklch_to_oklab(L, hi, H_deg)
-    if _in_gamut(_oklab_to_linear_srgb(L, a, b)):
-        return hi
-
     lo = 0.0
     for _ in range(24):
         mid = (lo + hi) / 2
@@ -102,12 +101,6 @@ def _max_in_gamut_chroma(L: float, H_deg: float, hi: float = 0.4) -> float:
         else:
             hi = mid
     return lo
-
-
-def max_chroma_at(L: float, H_deg: float) -> float:
-    """Public gamut-ceiling lookup used to turn a chroma *fraction* into an
-    actual OKLCH chroma value for a given lightness/hue."""
-    return _max_in_gamut_chroma(L, H_deg)
 
 
 def oklch_to_srgb255(L: float, C: float, H_deg: float):
@@ -123,7 +116,7 @@ def oklch_to_srgb255(L: float, C: float, H_deg: float):
     rgb_lin = _oklab_to_linear_srgb(L, a, b)
 
     if not _in_gamut(rgb_lin):
-        lo = _max_in_gamut_chroma(L, H_deg, hi=C)
+        lo = max_chroma_at(L, H_deg, hi=C)
         _, a, b = oklch_to_oklab(L, lo, H_deg)
         rgb_lin = _oklab_to_linear_srgb(L, a, b)
 
@@ -264,14 +257,11 @@ def _pick_role_fraction(primary_hue, primary_l, primary_fraction, anchor_hue, ba
     primary_c = chroma_from_fraction(primary_l, primary_hue, primary_fraction)
     primary_rgb = oklch_to_srgb255(primary_l, primary_c, primary_hue)
 
-    best_fraction, best_score = _SECONDARY_FRACTION_CANDIDATES[0], -math.inf
-    for fraction in _SECONDARY_FRACTION_CANDIDATES:
+    def score(fraction):
         c = chroma_from_fraction(base_l, anchor_hue, fraction)
-        rgb = oklch_to_srgb255(base_l, c, anchor_hue)
-        score = ou_luo_ch(primary_rgb, rgb)
-        if score > best_score:
-            best_score, best_fraction = score, fraction
-    return best_fraction
+        return ou_luo_ch(primary_rgb, oklch_to_srgb255(base_l, c, anchor_hue))
+
+    return max(_SECONDARY_FRACTION_CANDIDATES, key=score)
 
 
 def van_der_corput(index: int, base: int = 2) -> float:

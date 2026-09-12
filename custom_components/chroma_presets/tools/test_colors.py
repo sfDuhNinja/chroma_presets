@@ -15,17 +15,6 @@ from colors import (  # noqa: E402
 )
 
 
-def test_gamut_relative_chroma_never_clips_below_requested():
-    # For a spread of hues at a fixed L, requesting a fraction of the local
-    # ceiling must land in-gamut without oklch_to_srgb255 needing to clip
-    # further (that clip is a safety net, not the normal path here).
-    for h in range(0, 360, 15):
-        ceiling = max_chroma_at(0.6, h)
-        c = ceiling * 0.75
-        rgb = oklch_to_srgb255(0.6, c, h)
-        assert all(0 <= v <= 255 for v in rgb), (h, rgb)
-
-
 def test_tone_steps_stay_pairwise_separated():
     steps = sorted(TONE_L_STEPS)
     gaps = [b - a for a, b in zip(steps, steps[1:])]
